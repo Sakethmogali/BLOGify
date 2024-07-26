@@ -7,6 +7,7 @@ api.route('/blog',blog);
 api.route('/user',user);
 
 api.get('/', (c)=>{
+  c.redirect('/blog/bulk');
   return c.text('This is API ..');
 });
 
