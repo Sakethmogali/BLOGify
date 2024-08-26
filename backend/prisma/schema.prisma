@@ -13,7 +13,10 @@ model User{
   name  String?
   email String  @unique
   password String
-  posts Post[]    
+  posts Post[]  
+  bookmarks Bookmark[]   
+  colour String? 
+  bio String?
 }
 
 model Post{
@@ -23,4 +26,13 @@ model Post{
   published Boolean  @default(false)
   author User @relation(fields : [authorId] , references:[id])    
   authorId String
+  published_date DateTime @default(now()) @db.Date
+  bookmark Bookmark[]
+}
+model Bookmark{
+   id String @id @default(uuid())
+   user User @relation(fields:[userId],references:[id])
+   userId String
+   post Post @relation(fields:[postId],references:[id])
+   postId String 
 }

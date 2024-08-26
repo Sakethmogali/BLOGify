@@ -15,14 +15,14 @@ const blog = new Hono<{
 
 
 blog.use('*',async (c,next)=>{
-    const jwttoken=c.req.header('authorization');
+    try{
+        const jwttoken=c.req.header('authorization');
     if(!jwttoken)
     {
         c.status(401);
 		return c.json({ error: "Unauthorized" });
     }
     const payload = await verify(jwttoken,c.env.JWT_SECRET);
-    console.log(payload);
     if (!payload) {
 		c.status(401);
 		return c.json({ error: "unauthorized" });
@@ -30,14 +30,63 @@ blog.use('*',async (c,next)=>{
     //@ts-ignore
     c.set("Userid",payload.id);
     await next();
+    }
+    catch(err)
+    {
+        console.log(err);
+    }
 })
 blog.get('/bulk',async(c)=>{
-    const prisma = new PrismaClient({datasourceUrl: c.env?.DATABASE_URL,}).$extends(withAccelerate());
-    const Userid = c.get('Userid');
-    const body = await c.req.json();
-    const posts = await prisma.post.findMany({});
-	return c.json(posts);
+    try{
+        const prisma = new PrismaClient({datasourceUrl: c.env?.DATABASE_URL,}).$extends(withAccelerate());
+        const Userid = c.get('Userid');
+        console.log(Userid);
+         const posts = await prisma.post.findMany({
+             select:{
+               id:true,
+               content:true,
+               title:true,
+               published_date:true,
+               author:{
+                 select:{
+                     id:true,
+                     name:true,
+                     email:true,
+                     colour:true
+                 }
+               }   
+             }
+         },
+         );
+         return c.json(posts);
+    }
+    catch(err)
+    {
+        console.log(err);
+    }
+   
 });
+blog.get('/my',async(c)=>{
+    const prisma = new PrismaClient({datasourceUrl: c.env?.DATABASE_URL,}).$extends(withAccelerate());
+    try{
+        const userId=c.get('Userid')
+        const myblogs = await prisma.post.findMany({
+            where :{
+                author:{
+                    id:userId,
+                }
+            },
+        })
+        return c.json({myblogs});
+    }
+    catch(err)
+    {
+        c.status(411);
+        return c.json({
+            error:"Error while fetching!"
+        });
+    }
+})
 blog.get('/:id',async(c)=>{
     const prisma = new PrismaClient({datasourceUrl: c.env?.DATABASE_URL,}).$extends(withAccelerate());
     const id = c.req.param('id');
@@ -45,6 +94,18 @@ blog.get('/:id',async(c)=>{
         const post = await prisma.post.findUnique({
             where :{
                 id:id
+            },
+            select:{
+                id:true,
+                title:true,
+                content:true,
+                published_date:true,
+                author:{
+                    select:{
+                        name:true,
+                        colour:true
+                    }
+                }
             }
         })
         if(post == null)
@@ -63,7 +124,7 @@ blog.get('/:id',async(c)=>{
         });
     }
 });
-blog.post('/',async(c)=>{
+blog.post('/add',async(c)=>{
     const prisma = new PrismaClient({datasourceUrl: c.env?.DATABASE_URL,}).$extends(withAccelerate());
      const Userid = c.get('Userid');
     const body = await c.req.json();
@@ -79,7 +140,7 @@ blog.post('/',async(c)=>{
         id:post.id
     })
 });
-blog.put('/',async(c)=>{
+blog.put('/update',async(c)=>{
     const prisma = new PrismaClient({datasourceUrl: c.env?.DATABASE_URL,}).$extends(withAccelerate());
     const Userid = c.get('Userid');
     const body = await c.req.json();
